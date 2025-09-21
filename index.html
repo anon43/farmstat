@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🐟 Онлайн-касса: Рыбное дело</title>
+    <!-- Подключаем SheetJS для Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f9ff;
+            color: #333;
+            padding: 12px;
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+            color: #082f49;
+            margin: 12px 0 20px;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+        .container {
+            background: white;
+            padding: 16px;
+            border-radius: 16px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #e0f2fe;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab {
+            padding: 14px 16px;
+            background: #f1f5f9;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+            transition: all 0.25s ease;
+            white-space: nowrap;
+            position: relative;
+        }
+        .tab.active {
+            background: #0284c7;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.95rem;
+        }
+        input, select {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #0284c7;
+        }
+        button {
+            background-color: #0284c7;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 8px 0;
+            width: 100%;
+            transition: background-color 0.25s;
+        }
+        button:hover {
+            background-color: #0369a1;
+        }
+        button.delete-btn {
+            background-color: #dc2626;
+            padding: 8px 12px;
+            font-size: 0.875rem;
+            width: auto;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        button.delete-btn:hover {
+            background-color: #b91c1c;
+        }
+        button#clearBtn {
+            background-color: #dc2626;
+        }
+        button#clearBtn:hover {
+            background-color: #b91c1c;
+        }
+        button#printBtn {
+            background-color: #059669;
+        }
+        button#printBtn:hover {
+            background-color: #047857;
+        }
+        button#exportExcelBtn {
+            background-color: #7c2d12;
+        }
+        button#exportExcelBtn:hover {
+            background-color: #9a3412;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 0.875rem;
+            table-layout: auto;
+        }
+        th, td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+        }
+        th {
+            background-color: #f0fdf4;
+            color: #065f46;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f0fdf4;
+            border-radius: 12px;
+            font-size: 0.95rem;
+        }
+        .profit {
+            color: #059669;
+            font-weight: 700;
+        }
+        .loss {
+            color: #dc2626;
+            font-weight: 700;
+        }
+        .report {
+            margin-top: 20px;
+            padding: 16px;
+            background: #f1f5f9;
+            border-radius: 12px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            display: none;
+            overflow-x: auto;
+            line-height: 1.5;
+        }
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .copy-btn {
+            display: none;
+            background: #7c2d12;
+        }
+        .copy-btn:hover {
+            background: #9a3412;
+        }
+        .filters {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .filters select {
+            flex: 1;
+            min-width: 150px;
+        }
+        .receipt {
+            background: #fffbeb;
+            border: 1px dashed #d97706;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+        .receipt-header {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .receipt-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 4px 0;
+        }
+        .receipt-total {
+            border-top: 1px dashed #d97706;
+            margin-top: 8px;
+            padding-top: 8px;
+            font-weight: bold;
+        }
+
+        /* Адаптив для телефонов */
+        @media (max-width: 767px) {
+            body {
+                padding: 8px;
+            }
+            h1 {
+                font-size: 1.4rem;
+                margin: 10px 0 16px;
+            }
+            .container {
+                padding: 14px;
+                border-radius: 14px;
+            }
+            input, select, button {
+                padding: 14px 16px;
+                font-size: 1.05rem;
+            }
+            table {
+                font-size: 0.75rem;
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            th, td {
+                padding: 8px 6px;
+            }
+            .summary {
+                padding: 14px;
+                font-size: 0.9rem;
+            }
+            .report {
+                font-size: 0.85rem;
+                padding: 12px;
+            }
+            .filters select {
+                min-width: 100%;
+            }
+        }
+
+        /* Для планшетов и десктопов */
+        @media (min-width: 768px) {
+            body {
+                max-width: 1000px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2rem;
+                margin: 24px 0 30px;
+            }
+            .container {
+                padding: 24px;
+                border-radius: 18px;
+            }
+            input, select, button {
+                font-size: 1rem;
+            }
+            button {
+                width: auto;
+                margin: 0 8px 12px 0;
+            }
+            .actions {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            table {
+                font-size: 0.95rem;
+            }
+            th, td {
+                padding: 12px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🐟 Онлайн-касса: Рыбное дело</h1>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" data-tab="fish">Рыба</button>
+            <button class="tab" data-tab="caviar">Икра</button>
+            <button class="tab" data-tab="other">Другое</button>
+        </div>
+
+        <!-- Вкладка Рыба -->
+        <div id="fish" class="tab-content active">
+            <div class="form-group">
+                <label for="fishWeight">Вес (кг):</label>
+                <input type="number" id="fishWeight" step="0.01" min="0" placeholder="Например: 5.5">
+            </div>
+            <div class="form-group">
+                <label for="fishCost">Себестоимость за кг (₽):</label>
+                <input type="number" id="fishCost" step="0.01" min="0" placeholder="Например: 200">
+            </div>
+            <div class="form-group">
+                <label for="fishPrice">Цена продажи за кг (₽):</label>
+                <input type="number" id="fishPrice" step="0.01" min="0" placeholder="Например: 350">
+            </div>
+            <div class="form-group">
+                <label for="fishTax">НДС:</label>
+                <select id="fishTax">
+                    <option value="0">Без НДС</option>
+                    <option value="10">10%</option>
+                    <option value="20">20%</option>
+                </select>
+            </div>
+            <button id="addFishSale">Добавить продажу рыбы</button>
+        </div>
+
+        <!-- Вкладка Икра -->
+        <div id="caviar" class="tab-content">
+            <div class="form-group">
+                <label for="caviarWeight">Вес (кг):</label>
+                <input type="number" id="caviarWeight" step="0.01" min="0" placeholder="Например: 0.5">
+            </div>
+            <div class="form-group">
+                <label for="caviarCost">Себестоимость за кг (₽):</label>
+                <input type="number" id="caviarCost" step="0.01" min="0" placeholder="Например: 5000">
+            </div>
+            <div class="form-group">
+                <label for="caviarPrice">Цена продажи за кг (₽):</label>
+                <input type="number" id="caviarPrice" step="0.01" min="0" placeholder="Например: 8000">
+            </div>
+            <div class="form-group">
+                <label for="caviarTax">НДС:</label>
+                <select id="caviarTax">
+                    <option value="0">Без НДС</option>
+                    <option value="10">10%</option>
+                    <option value="20">20%</option>
+                </select>
+            </div>
+            <button id="addCaviarSale">Добавить продажу икры</button>
+        </div>
+
+        <!-- Вкладка Другое -->
+        <div id="other" class="tab-content">
+            <div class="form-group">
+                <label for="otherName">Наименование:</label>
+                <input type="text" id="otherName" placeholder="Например: Креветки">
+            </div>
+            <div class="form-group">
+                <label for="otherWeight">Количество/Вес:</label>
+                <input type="number" id="otherWeight" step="0.01" min="0" placeholder="1.0">
+            </div>
+            <div class="form-group">
+                <label for="otherCost">Себестоимость за ед. (₽):</label>
+                <input type="number" id="otherCost" step="0.01" min="0" placeholder="1000">
+            </div>
+            <div class="form-group">
+                <label for="otherPrice">Цена продажи за ед. (₽):</label>
+                <input type="number" id="otherPrice" step="0.01" min="0" placeholder="1500">
+            </div>
+            <div class="form-group">
+                <label for="otherTax">НДС:</label>
+                <select id="otherTax">
+                    <option value="0">Без НДС</option>
+                    <option value="10">10%</option>
+                    <option value="20">20%</option>
+                </select>
+            </div>
+            <button id="addOtherSale">Добавить продажу</button>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="filters">
+            <select id="dateFilter">
+                <option value="all">Все время</option>
+                <option value="today">Сегодня</option>
+                <option value="week">Неделя</option>
+                <option value="month">Месяц</option>
+            </select>
+            <select id="categoryFilter">
+                <option value="all">Все категории</option>
+                <option value="fish">Рыба</option>
+                <option value="caviar">Икра</option>
+                <option value="other">Другое</option>
+            </select>
+        </div>
+
+        <!-- Общие кнопки -->
+        <div class="actions">
+            <button id="clearBtn">🗑️ Очистить все данные</button>
+            <button id="printBtn">📋 Сформировать отчет</button>
+            <button id="exportExcelBtn">📊 Экспорт в Excel</button>
+        </div>
+
+        <!-- Чек (появляется после добавления продажи) -->
+        <div class="receipt" id="receipt">
+            <div class="receipt-header">КАССОВЫЙ ЧЕК</div>
+            <div id="receiptContent"></div>
+        </div>
+
+        <!-- Таблицы продаж -->
+        <h3>Продажи:</h3>
+        <table id="salesTable">
+            <thead>
+                <tr>
+                    <th>Чек №</th>
+                    <th>Дата</th>
+                    <th>Категория</th>
+                    <th>Наименование</th>
+                    <th>Кол-во</th>
+                    <th>Цена</th>
+                    <th>НДС</th>
+                    <th>Прибыль</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="salesList"></tbody>
+        </table>
+
+        <!-- Итоговая сводка -->
+        <div class="summary" id="summary">
+            <h3>📊 Финансовые итоги:</h3>
+            <p>Всего продаж: <span id="totalCount">0</span></p>
+            <p>Выручка: <span id="totalRevenue" class="profit">0 ₽</span></p>
+            <p>Себестоимость: <span id="totalCost" class="loss">0 ₽</span></p>
+            <p>НДС: <span id="totalTax">0 ₽</span></p>
+            <p>Чистая прибыль: <span id="netProfit" class="profit">0 ₽</span></p>
+        </div>
+
+        <!-- Отчет -->
+        <div class="report" id="report"></div>
+        <div class="actions">
+            <button id="copyReport" class="copy-btn">📋 Копировать отчет</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Элементы
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const dateFilter = document.getElementById('dateFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
+
+            // Элементы форм
+            const fishWeight = document.getElementById('fishWeight');
+            const fishCost = document.getElementById('fishCost');
+            const fishPrice = document.getElementById('fishPrice');
+            const fishTax = document.getElementById('fishTax');
+            const caviarWeight = document.getElementById('caviarWeight');
+            const caviarCost = document.getElementById('caviarCost');
+            const caviarPrice = document.getElementById('caviarPrice');
+            const caviarTax = document.getElementById('caviarTax');
+            const otherName = document.getElementById('otherName');
+            const otherWeight = document.getElementById('otherWeight');
+            const otherCost = document.getElementById('otherCost');
+            const otherPrice = document.getElementById('otherPrice');
+            const otherTax = document.getElementById('otherTax');
+
+            // Кнопки
+            const addFishBtn = document.getElementById('addFishSale');
+            const addCaviarBtn = document.getElementById('addCaviarSale');
+            const addOtherBtn = document.getElementById('addOtherSale');
+            const clearBtn = document.getElementById('clearBtn');
+            const printBtn = document.getElementById('printBtn');
+            const exportExcelBtn = document.getElementById('exportExcelBtn');
+            const copyBtn = document.getElementById('copyReport');
+
+            // Таблицы и итоги
+            const salesList = document.getElementById('salesList');
+            const totalCountEl = document.getElementById('totalCount');
+            const totalRevenueEl = document.getElementById('totalRevenue');
+            const totalCostEl = document.getElementById('totalCost');
+            const totalTaxEl = document.getElementById('totalTax');
+            const netProfitEl = document.getElementById('netProfit');
+            const reportDiv = document.getElementById('report');
+            const receiptDiv = document.getElementById('receipt');
+            const receiptContent = document.getElementById('receiptContent');
+
+            // Глобальный счетчик чеков
+            let receiptCounter = parseInt(localStorage.getItem('receiptCounter')) || 1;
+
+            // Загружаем продажи
+            let sales = JSON.parse(localStorage.getItem('sales')) || [];
+
+            // Переключение вкладок
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(tc => tc.classList.remove('active'));
+                    tab.classList.add('active');
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+
+            // Форматирование даты
+            function formatDate(dateString, compact = false) {
+                const date = new Date(dateString);
+                if (compact) {
+                    return date.toLocaleDateString('ru-RU');
+                }
+                return date.toLocaleString('ru-RU');
+            }
+
+            // Фильтрация данных
+            function getFilteredSales() {
+                let filtered = [...sales];
+
+                // Фильтр по дате
+                const dateValue = dateFilter.value;
+                const now = new Date();
+                if (dateValue === 'today') {
+                    filtered = filtered.filter(sale => {
+                        const saleDate = new Date(sale.date);
+                        return saleDate.toDateString() === now.toDateString();
+                    });
+                } else if (dateValue === 'week') {
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    filtered = filtered.filter(sale => new Date(sale.date) >= weekAgo);
+                } else if (dateValue === 'month') {
+                    const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+                    filtered = filtered.filter(sale => new Date(sale.date) >= monthAgo);
+                }
+
+                // Фильтр по категории
+                const categoryValue = categoryFilter.value;
+                if (categoryValue !== 'all') {
+                    filtered = filtered.filter(sale => sale.category === categoryValue);
+                }
+
+                return filtered;
+            }
+
+            // Рендер таблицы продаж
+            function renderSales() {
+                const filteredSales = getFilteredSales();
+                salesList.innerHTML = '';
+
+                filteredSales.forEach((sale, index) => {
+                    const revenue = sale.price * sale.weight;
+                    const cost = sale.cost * sale.weight;
+                    const profit = revenue - cost;
+                    const taxAmount = (sale.tax / 100) * revenue;
+
+                    const row = document.createElement('tr');
+                    const formattedDate = formatDate(sale.date, window.innerWidth < 768);
+
+                    let itemName = '';
+                    if (sale.category === 'fish') itemName = 'Рыба';
+                    else if (sale.category === 'caviar') itemName = 'Икра';
+                    else itemName = sale.name || 'Товар';
+
+                    row.innerHTML = `
+                        <td>${sale.receiptId}</td>
+                        <td>${formattedDate}</td>
+                        <td>${sale.category === 'fish' ? 'Рыба' : sale.category === 'caviar' ? 'Икра' : 'Другое'}</td>
+                        <td>${itemName}</td>
+                        <td>${sale.weight.toFixed(2)}</td>
+                        <td>${sale.price.toFixed(2)} ₽</td>
+                        <td>${sale.tax}% (${taxAmount.toFixed(2)} ₽)</td>
+                        <td class="${profit >= 0 ? 'profit' : 'loss'}">${profit.toFixed(2)} ₽</td>
+                        <td><button class="delete-btn" data-index="${sales.indexOf(sale)}">🗑️</button></td>
+                    `;
+                    salesList.appendChild(row);
+                });
+
+                // Обновляем итоги
+                updateSummary(filteredSales);
+                
+                // Навешиваем обработчики удаления
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const globalIndex = parseInt(this.getAttribute('data-index'));
+                        sales.splice(globalIndex, 1);
+                        localStorage.setItem('sales', JSON.stringify(sales));
+                        renderSales();
+                    });
+                });
+            }
+
+            // Обновление финансовых итогов
+            function updateSummary(filteredSales) {
+                let totalRevenue = 0;
+                let totalCost = 0;
+                let totalTax = 0;
+
+                filteredSales.forEach(sale => {
+                    const revenue = sale.price * sale.weight;
+                    const cost = sale.cost * sale.weight;
+                    const tax = (sale.tax / 100) * revenue;
+                    totalRevenue += revenue;
+                    totalCost += cost;
+                    totalTax += tax;
+                });
+
+                const netProfit = totalRevenue - totalCost - totalTax;
+
+                totalCountEl.textContent = filteredSales.length;
+                totalRevenueEl.textContent = totalRevenue.toFixed(2) + ' ₽';
+                totalCostEl.textContent = totalCost.toFixed(2) + ' ₽';
+                totalTaxEl.textContent = totalTax.toFixed(2) + ' ₽';
+                netProfitEl.textContent = netProfit.toFixed(2) + ' ₽';
+                netProfitEl.className = netProfit >= 0 ? 'profit' : 'loss';
+            }
+
+            // Показать чек
+            function showReceipt(sale) {
+                let itemName = '';
+                if (sale.category === 'fish') itemName = 'Рыба';
+                else if (sale.category === 'caviar') itemName = 'Икра';
+                else itemName = sale.name || 'Товар';
+
+                const revenue = sale.price * sale.weight;
+                const taxAmount = (sale.tax / 100) * revenue;
+
+                receiptContent.innerHTML = `
+                    <div class="receipt-item">
+                        <span>Товар:</span>
+                        <span>${itemName}</span>
+                    </div>
+                    <div class="receipt-item">
+                        <span>Количество:</span>
+                        <span>${sale.weight.toFixed(2)}</span>
+                    </div>
+                    <div class="receipt-item">
+                        <span>Цена за ед.:</span>
+                        <span>${sale.price.toFixed(2)} ₽</span>
+                    </div>
+                    <div class="receipt-item">
+                        <span>НДС (${sale.tax}%):</span>
+                        <span>${taxAmount.toFixed(2)} ₽</span>
+                    </div>
+                    <div class="receipt-total">
+                        <span>ИТОГО:</span>
+                        <span>${revenue.toFixed(2)} ₽</span>
+                    </div>
+                    <div style="text-align: center; margin-top: 12px; font-size: 0.9rem;">
+                        Чек №${sale.receiptId} от ${formatDate(sale.date)}
+                    </div>
+                `;
+
+                receiptDiv.style.display = 'block';
+                setTimeout(() => {
+                    receiptDiv.style.display = 'none';
+                }, 5000);
+            }
+
+            // Добавление продажи рыбы
+            addFishBtn.addEventListener('click', function() {
+                const weight = parseFloat(fishWeight.value);
+                const cost = parseFloat(fishCost.value);
+                const price = parseFloat(fishPrice.value);
+                const tax = parseFloat(fishTax.value);
+
+                if (isNaN(weight) || isNaN(cost) || isNaN(price) || weight <= 0 || cost < 0 || price < 0) {
+                    alert('Пожалуйста, введите корректные значения');
+                    return;
+                }
+
+                const newSale = {
+                    receiptId: receiptCounter++,
+                    category: 'fish',
+                    weight,
+                    cost,
+                    price,
+                    tax,
+                    date: new Date().toISOString()
+                };
+
+                sales.push(newSale);
+                localStorage.setItem('sales', JSON.stringify(sales));
+                localStorage.setItem('receiptCounter', receiptCounter.toString());
+
+                renderSales();
+                showReceipt(newSale);
+
+                // Очистка полей
+                fishWeight.value = '';
+                fishCost.value = '';
+                fishPrice.value = '';
+                fishWeight.focus();
+            });
+
+            // Добавление продажи икры
+            addCaviarBtn.addEventListener('click', function() {
+                const weight = parseFloat(caviarWeight.value);
+                const cost = parseFloat(caviarCost.value);
+                const price = parseFloat(caviarPrice.value);
+                const tax = parseFloat(caviarTax.value);
+
+                if (isNaN(weight) || isNaN(cost) || isNaN(price) || weight <= 0 || cost < 0 || price < 0) {
+                    alert('Пожалуйста, введите корректные значения');
+                    return;
+                }
+
+                const newSale = {
+                    receiptId: receiptCounter++,
+                    category: 'caviar',
+                    weight,
+                    cost,
+                    price,
+                    tax,
+                    date: new Date().toISOString()
+                };
+
+                sales.push(newSale);
+                localStorage.setItem('sales', JSON.stringify(sales));
+                localStorage.setItem('receiptCounter', receiptCounter.toString());
+
+                renderSales();
+                showReceipt(newSale);
+
+                caviarWeight.value = '';
+                caviarCost.value = '';
+                caviarPrice.value = '';
+                caviarWeight.focus();
+            });
+
+            // Добавление продажи другого товара
+            addOtherBtn.addEventListener('click', function() {
+                const name = otherName.value.trim();
+                const weight = parseFloat(otherWeight.value);
+                const cost = parseFloat(otherCost.value);
+                const price = parseFloat(otherPrice.value);
+                const tax = parseFloat(otherTax.value);
+
+                if (!name || isNaN(weight) || isNaN(cost) || isNaN(price) || weight <= 0 || cost < 0 || price < 0) {
+                    alert('Пожалуйста, введите корректные значения');
+                    return;
+                }
+
+                const newSale = {
+                    receiptId: receiptCounter++,
+                    category: 'other',
+                    name,
+                    weight,
+                    cost,
+                    price,
+                    tax,
+                    date: new Date().toISOString()
+                };
+
+                sales.push(newSale);
+                localStorage.setItem('sales', JSON.stringify(sales));
+                localStorage.setItem('receiptCounter', receiptCounter.toString());
+
+                renderSales();
+                showReceipt(newSale);
+
+                otherName.value = '';
+                otherWeight.value = '';
+                otherCost.value = '';
+                otherPrice.value = '';
+                otherName.focus();
+            });
+
+            // Очистка всех данных
+            clearBtn.addEventListener('click', function() {
+                if (confirm('Вы уверены, что хотите удалить ВСЕ данные?')) {
+                    sales = [];
+                    receiptCounter = 1;
+                    localStorage.removeItem('sales');
+                    localStorage.setItem('receiptCounter', '1');
+                    renderSales();
+                    reportDiv.style.display = 'none';
+                    copyBtn.style.display = 'none';
+                }
+            });
+
+            // Применение фильтров
+            dateFilter.addEventListener('change', renderSales);
+            categoryFilter.addEventListener('change', renderSales);
+
+            // Генерация текстового отчета
+            function generateReportText() {
+                const filteredSales = getFilteredSales();
+                if (filteredSales.length === 0) {
+                    return null;
+                }
+
+                let reportText = `ОТЧЕТ ПО ПРОДАЖАМ\n`;
+                reportText += `Период: ${dateFilter.options[dateFilter.selectedIndex].text}\n`;
+                reportText += `Категория: ${categoryFilter.options[categoryFilter.selectedIndex].text}\n`;
+                reportText += `Дата формирования: ${new Date().toLocaleString('ru-RU')}\n`;
+                reportText += `=`.repeat(60) + `\n\n`;
+
+                reportText += `Чек № | Дата       | Категория | Наименование | Кол-во | Цена  | НДС  | Прибыль\n`;
+                reportText += `-`.repeat(60) + `\n`;
+
+                filteredSales.forEach(sale => {
+                    const revenue = sale.price * sale.weight;
+                    const cost = sale.cost * sale.weight;
+                    const profit = revenue - cost;
+                    const taxAmount = (sale.tax / 100) * revenue;
+
+                    let itemName = '';
+                    if (sale.category === 'fish') itemName = 'Рыба';
+                    else if (sale.category === 'caviar') itemName = 'Икра';
+                    else itemName = sale.name || 'Товар';
+
+                    const dateStr = formatDate(sale.date, true);
+                    reportText += `${sale.receiptId.toString().padStart(5)} | ${dateStr.padEnd(10)} | ${sale.category.padEnd(9)} | ${itemName.padEnd(12)} | ${sale.weight.toFixed(2).padStart(6)} | ${sale.price.toFixed(2).padStart(6)} | ${taxAmount.toFixed(2).padStart(6)} | ${profit.toFixed(2).padStart(8)}\n`;
+                });
+
+                reportText += `\n`;
+                reportText += `=`.repeat(60) + `\n`;
+                reportText += `ИТОГО:\n`;
+
+                let totalRevenue = 0;
+                let totalCost = 0;
+                let totalTax = 0;
+
+                filteredSales.forEach(sale => {
+                    const revenue = sale.price * sale.weight;
+                    const cost = sale.cost * sale.weight;
+                    const tax = (sale.tax / 100) * revenue;
+                    totalRevenue += revenue;
+                    totalCost += cost;
+                    totalTax += tax;
+                });
+
+                const netProfit = totalRevenue - totalCost - totalTax;
+
+                reportText += `Всего продаж: ${filteredSales.length}\n`;
+                reportText += `Выручка: ${totalRevenue.toFixed(2)} ₽\n`;
+                reportText += `Себестоимость: ${totalCost.toFixed(2)} ₽\n`;
+                reportText += `НДС: ${totalTax.toFixed(2)} ₽\n`;
+                reportText += `Чистая прибыль: ${netProfit.toFixed(2)} ₽\n`;
+
+                return reportText;
+            }
+
+            // Кнопка "Сформировать отчет"
+            printBtn.addEventListener('click', function() {
+                const reportText = generateReportText();
+                if (!reportText) {
+                    alert('Нет данных для формирования отчета.');
+                    return;
+                }
+
+                reportDiv.textContent = reportText;
+                reportDiv.style.display = 'block';
+                copyBtn.style.display = 'block';
+            });
+
+            // Копирование отчета
+            copyBtn.addEventListener('click', function() {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(reportDiv.textContent)
+                        .then(() => alert('Отчет скопирован!'))
+                        .catch(() => alert('Не удалось скопировать.'));
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = reportDiv.textContent;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    try {
+                        document.execCommand('copy');
+                        alert('Отчет скопирован!');
+                    } catch (err) {
+                        alert('Не удалось скопировать.');
+                    }
+                    document.body.removeChild(textarea);
+                }
+            });
+
+            // Экспорт в Excel
+            exportExcelBtn.addEventListener('click', function() {
+                const filteredSales = getFilteredSales();
+                if (filteredSales.length === 0) {
+                    alert('Нет данных для экспорта.');
+                    return;
+                }
+
+                // Подготавливаем данные для Excel
+                const worksheetData = [
+                    [
+                        "Чек №",
+                        "Дата",
+                        "Категория",
+                        "Наименование",
+                        "Количество",
+                        "Цена за ед.",
+                        "Выручка",
+                        "Себестоимость",
+                        "НДС %",
+                        "Сумма НДС",
+                        "Прибыль"
+                    ]
+                ];
+
+                filteredSales.forEach(sale => {
+                    const revenue = sale.price * sale.weight;
+                    const cost = sale.cost * sale.weight;
+                    const taxAmount = (sale.tax / 100) * revenue;
+                    const profit = revenue - cost - taxAmount;
+
+                    let itemName = '';
+                    if (sale.category === 'fish') itemName = 'Рыба';
+                    else if (sale.category === 'caviar') itemName = 'Икра';
+                    else itemName = sale.name || 'Товар';
+
+                    worksheetData.push([
+                        sale.receiptId,
+                        formatDate(sale.date),
+                        sale.category === 'fish' ? 'Рыба' : sale.category === 'caviar' ? 'Икра' : 'Другое',
+                        itemName,
+                        sale.weight,
+                        sale.price,
+                        revenue,
+                        cost,
+                        sale.tax,
+                        taxAmount,
+                        profit
+                    ]);
+                });
+
+                // Добавляем итоговую строку
+                let totalRevenue = 0;
+                let totalCost = 0;
+                let totalTax = 0;
+
+                filteredSales.forEach(sale => {
+                    const revenue = sale.price * sale.weight;
+                    const cost = sale.cost * sale.weight;
+                    const tax = (sale.tax / 100) * revenue;
+                    totalRevenue += revenue;
+                    totalCost += cost;
+                    totalTax += tax;
+                });
+
+                const netProfit = totalRevenue - totalCost - totalTax;
+
+                worksheetData.push([]);
+                worksheetData.push([
+                    "ИТОГО:",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    totalRevenue,
+                    totalCost,
+                    "",
+                    totalTax,
+                    netProfit
+                ]);
+
+                // Создаем книгу Excel
+                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Продажи");
+
+                // Экспортируем файл
+                XLSX.writeFile(workbook, `Отчет_рыбное_дело_${new Date().toISOString().slice(0,10)}.xlsx`);
+            });
+
+            // Инициализация
+            renderSales();
+        });
+    </script>
+</body>
+</html>
